@@ -1,0 +1,63 @@
+name: Release
+on:
+  schedule:
+    - cron: '0 16 * * *'
+  pull_request:
+    branches:
+      - main
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: main
+      - name: Get dependencies
+        run: |
+          sudo apt-get update -y
+          \cp -f /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+
+      - name: Download metacubexd
+        run: |
+          rm -rf /tmp/dist /tmp/dist.zip
+          wget https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip -O /tmp/dist.zip
+          unzip -o /tmp/dist.zip -d /tmp/dist
+          mkdir -p metacubexd
+          mv /tmp/dist/*/* metacubexd
+
+      - name: Download zashboard
+        run: |
+          rm -rf /tmp/dist /tmp/dist.zip
+          wget https://github.com/Zephyruso/zashboard/archive/refs/heads/gh-pages.zip -O /tmp/dist.zip
+          unzip -o /tmp/dist.zip -d /tmp/dist
+          mkdir -p zashboard
+          mv /tmp/dist/*/* zashboard
+
+      - name: Download yacd
+        run: |
+          rm -rf /tmp/dist /tmp/dist.zip
+          wget https://github.com/MetaCubeX/yacd/archive/gh-pages.zip -O /tmp/dist.zip
+          unzip -o /tmp/dist.zip -d /tmp/dist
+          mkdir -p yacd
+          mv /tmp/dist/*/* yacd
+
+      - name: Clean up
+        run: |
+          exclude=("." ".git" "metacubexd" "zashboard" "yacd")
+          find . -maxdepth 1 $(printf "! -name %s " "${exclude[@]}") -exec rm -rf {} +
+
+      - name: Commit files
+        run: |
+          sudo git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          sudo git config --local user.name "github-actions[bot]"
+          sudo git rm --cached --ignore-unmatch -r -f *
+          sudo git add .
+          sudo git commit -m "Add sync changes"
+                    sudo git show-ref --verify --quiet refs/heads/gh-pages || sudo git checkout -b gh-pages
+          sudo git push -f origin gh-pages
